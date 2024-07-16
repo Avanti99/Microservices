@@ -2,6 +2,9 @@ package com.example.UserService.controller;
 
 import com.example.UserService.model.User;
 import com.example.UserService.service.UserService;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,9 +31,25 @@ public class UserController {
         return ResponseEntity.ok(allUsers);
     }
 
+    int retryCount = 1;
+
     @GetMapping("/{userId}")
+//    @CircuitBreaker(name = "ratingHotelBreaker", fallbackMethod = "ratingHotelFallback")
+//    @Retry(name = "ratingHotelService", fallbackMethod = "ratingHotelFallback")
+    @RateLimiter(name = "userRateLimiter", fallbackMethod = "ratingHotelFallback")
     public ResponseEntity<User> getSingleUser(@PathVariable Integer userId) {
+        retryCount++;
         User user = userService.getUser(userId);
+        return ResponseEntity.ok(user);
+    }
+
+    public ResponseEntity<User> ratingHotelFallback(Integer userId, Exception ex) {
+        User user = User.builder()
+                .email("dummy@gmail.com")
+                .name("Dummy")
+                .about("This user is created dummy because some service is down")
+                .userId(3)
+                .build();
         return ResponseEntity.ok(user);
     }
 
